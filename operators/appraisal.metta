@@ -112,8 +112,8 @@
 ; incremental blending:  new = (1-α)·old + α·target
 ; ─────────────────────────────────────────────
 
-(= (_effective $smoothed $rowSignal)
- (eval (_clamp01 (* (- 1.0 $coldWeight) (* (+ $smoothed $coldWeight) $rawSignal))))
+(= (_effective $smoothed $rowSignal $coldWeight)
+ (eval (_clamp01 (* (- 1.0 $coldWeight) (* (+ $smoothed $coldWeight) $rowSignal))))
 )
 (= (appraisalModulator $space)
     (let*
@@ -266,31 +266,32 @@
           (eval(_clamp11 (+
             (* (- 1.0 (getAlpha $space valence_alpha))        (getMod $space m_valence))
             (* (getAlpha $space valence_alpha)                $valence_target)))))
-            
-        ($t (match $space (state $turn  $x $y $z $alpha) $turn))
-
-        ($coldWeight (if (and (> (getAlpha $space cold_start_horizon) 0.0) (> (getAlpha $space cold_start_Strength) $turn))))
+        ($turn (match $space (state (turn $turn)  $x $y $z $alpha) $turn))
+        ; idk what to assign to coldWeight so will just do 1 and 0 for now
+        ($coldWeight (if (and (> (getAlpha $space cold_start_horizon) 0.0) (> (getAlpha $space cold_start_strength) $turn)) 0.5 1.0))
         ($cx (getContext $space complexity))
-        ($u (_effective (getMod $space m_urgency) $cx))
-        ($_ (println! "u " $u)))
-        ($res (_effective (getMod $space m_resolution) $cx))
-        ($ux (_effective (getMod $space m_user_expertise) $experties))
-        ($threshold (_effective (getMod $space m_threshold) $thresholdSignal))
-        ($urgent (getContext $space urgency))
+        ;cx or target_u?
+        ($u (_effective (getMod $space m_urgency) $cx $coldWeight))
+        ($_ (println! ("u: " $u)))
+        ($res (_effective (getMod $space m_resolution) $cx $coldWeight))
+        ($ux (_effective (getMod $space m_user_expertise) $exp $coldWeight))
+        ($threshold (_effective (getMod $space m_threshold) $thr $coldWeight))
+        ($urgent (getContext $space urgent))
         ($intentType (getContext $space intent_type))
         ($needsExternalEvidence (getContext $space needs_external_evidence))
         ($needsTaskPlan (getContext $space needs_task_plan))
         ($needsMultiSourceIntegration (getContext $space needs_multi_source_integration))
         ($verify_request (getContext $space verify_request))
-        ($creativity (_effective (getMod $space m_creativity) $creativity_target))
-        ($securing (_effective (getMod $space m_securing) $securing_target))
-        ($approach (_effective (getMod $space m_approach) $approach_target))
-        ($arousal (_effective (getMod $space m_arousal) arousal_target))
-        ($risk_aversion (_effective (getMod $space m_risk_aversion) $risk_aversion_target))
-        ($error_tolerance (_effective (getMod $space m_error_tolerance) $error_tolerance_target))
-        ($creativity (_effective (getMod $space m_creativity) $creativity_target))
-        ($valence (_clamp11 (* (- 1.0 $coldWeight) (* (+ (getContext $space valence)
-            $coldWeight) (getContext $space valence)))))
+        ($creativity (_effective (getMod $space m_creativity) $creativity_target $coldWeight))
+        ($securing (_effective (getMod $space m_securing) $securing_target $coldWeight))
+        ($approach (_effective (getMod $space m_approach) $approach_target $coldWeight))
+        ($arousal (_effective (getMod $space m_arousal) $arousal_target $coldWeight))
+        ($risk_aversion (_effective (getMod $space m_risk_aversion) $risk_aversion_target $coldWeight))
+        ($error_tolerance (_effective (getMod $space m_error_tolerance) $error_tolerance_target $coldWeight))
+        ($creativity (_effective (getMod $space m_creativity) $creativity_target $coldWeight))
+        ($valence (eval(_clamp11 (* (- 1.0 $coldWeight) (* (+ (getContext $space valence)
+            $coldWeight) (getContext $space valence))))))
+
 
         ($updatedMods (modulator-vector
         (m_urgency           $m_urgency)
@@ -308,12 +309,13 @@
         (m_valence           $m_valence)))
 
         ($_ (update-mods $space $updatedMods))
-        ($res ((turn_count $turn)
+        ($result (
+                        (turn_count $turn)
                         (cold_weight $coldWeight)
                         (cx $cx)
                         (ambiguity $amb)
                         (expertise $exp)
-                        (threshold_signal $thresholdSignal)
+                        (threshold_signal $thr)
                         (familiarity_signal $fam)
                         (failure_signal $fs)
                         (urgent_flag $urg)
@@ -343,7 +345,7 @@
       ; ── return the full updated modulator-vector ──────────
 
      (
-        $res 
+        $result
       
      )
       
@@ -353,7 +355,7 @@
 )
 
 (= (getAntiGoals $space)
-     (match $space (state $x $y $anti_goals) (cdr-atom $anti_goals))
+     (match $space (state $t $x $y $anti_goals $alpha) $anti_goals)
 )
 
 
