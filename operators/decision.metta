@@ -56,6 +56,8 @@
     (let*
      (
         ($current-modulator-vec (match $space (state $turn $x $y $anti $alpha) $y))
+        ($alpha (match $space (state $turn $x $y $anti $alpha) $alpha))
+        ($t  (match $space (state $turn $x $y $anti $alpha) $turn))
         ($current-goal (cdr-atom (match $space (state $turn $x $y $anti $alpha) $x)))
         ($current-anti-goal (match $space (state $turn $x $y $anti $alpha) $anti))
         
@@ -76,7 +78,7 @@
             (over_safety          (eval (replaceByIndex $current-goal 12 ($name $value))))
             (over_honesty         (eval (replaceByIndex $current-goal 13 ($name $value))))
         )))
-        ($updated-state (state (cons goal-vector $update-goal) $current-modulator-vec $current-anti-goal))
+        ($updated-state (state $t (cons goal-vector $update-goal) $current-modulator-vec $current-anti-goal $alpha))
         ($_ (remove-state $space))
      )
      (add-atom $space $updated-state)
