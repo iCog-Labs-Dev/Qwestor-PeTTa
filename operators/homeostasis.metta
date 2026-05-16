@@ -37,6 +37,39 @@
  )
 )
 
+(= (updateGoal_homeo $space $name $value)
+    (let*
+     (
+        ($current-turn (match $space (state $turn $x $y $anti $alpha) $turn))
+        ($current-modulator-vec (match $space (state $turn $x $y $anti $alpha) $y))
+        ($current-goal (cdr-atom (match $space (state $turn $x $y $anti $alpha) $x)))
+        ($current-anti-goal (match $space (state $turn $x $y $anti $alpha) $anti))
+        ($current-alpha (match $space (state $turn $x $y $anti $alpha) $alpha))
+        
+        ($updated-goal  (case $name
+        (
+            (efficiency           (eval (replaceByIndex $current-goal 0  ($name $value))))
+            (accuracy             (eval (replaceByIndex $current-goal 1  ($name $value))))
+            (success_moderate     (eval (replaceByIndex $current-goal 2  ($name $value))))
+            (knowledge            (eval (replaceByIndex $current-goal 3  ($name $value))))
+            (novelty              (eval (replaceByIndex $current-goal 4  ($name $value))))
+            (success_breakthrough (eval (replaceByIndex $current-goal 5  ($name $value))))
+            (coherence            (eval (replaceByIndex $current-goal 6  ($name $value))))
+            (originality          (eval (replaceByIndex $current-goal 7  ($name $value))))
+            (social               (eval (replaceByIndex $current-goal 8  ($name $value))))
+            (help_short           (eval (replaceByIndex $current-goal 9  ($name $value))))
+            (help_long            (eval (replaceByIndex $current-goal 10 ($name $value))))
+            (over_beneficial      (eval (replaceByIndex $current-goal 11 ($name $value))))
+            (over_safety          (eval (replaceByIndex $current-goal 12 ($name $value))))
+            (over_honesty         (eval (replaceByIndex $current-goal 13 ($name $value))))
+        )))
+        ($updated-state (state $current-turn (cons goal-vector $updated-goal) $current-modulator-vec $current-anti-goal $current-alpha))
+        ($_ (remove-state $space))
+     )
+     (add-atom $space $updated-state)
+      )
+)
+
 (= (getGoal_homeo $space $goal-name)
    (get_goal_homeo $space $goal-name)
 )
