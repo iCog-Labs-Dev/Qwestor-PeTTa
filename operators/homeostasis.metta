@@ -1,7 +1,40 @@
 ; helper 
+(= (remove-state $space)
+    (let $state (match $space (state (turn $turn) $x $y $z $alpha)) (remove-atom $space $state))
+) 
 
 (= (getAlpha_homeo $space $name)
       (match $space ($name $y) $y)
+)
+(= (get_goal_homeo $space $goal-name)
+ (let*
+  (
+    ($goal-vec  (match $space (state (turn $turn) $g $m $anti $alpha) $g))
+    ($goal-list (cdr-atom $goal-vec))
+
+    ($pair
+      (case $goal-name
+        (
+          (efficiency           (index-atom $goal-list 0))
+          (accuracy             (index-atom $goal-list 1))
+          (success_moderate     (index-atom $goal-list 2))
+          (knowledge            (index-atom $goal-list 3))
+          (novelty              (index-atom $goal-list 4))
+          (success_breakthrough (index-atom $goal-list 5))
+          (coherence            (index-atom $goal-list 6))
+          (originality          (index-atom $goal-list 7))
+          (social               (index-atom $goal-list 8))
+          (help_short           (index-atom $goal-list 9))
+          (help_long            (index-atom $goal-list 10))
+          (over_beneficial      (index-atom $goal-list 11))
+          (over_safety          (index-atom $goal-list 12))
+          (over_honesty         (index-atom $goal-list 13))
+        )
+      )
+    )
+  )
+  (index-atom $pair 1)
+ )
 )
 
 ; default values 
