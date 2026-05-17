@@ -1,12 +1,16 @@
-
-; End-to-end MeTTa pipeline test:
-;   Setup -> Context -> Appraisal -> Goal Weighting -> Action Selection
+; ─────────────────────────────────────────────
+; main/test/test_pipeline.metta
 ;
-; Uses hardcoded context signals (bypassing the LLM API).
-; Each test section uses !(test ...) for hard assertions where safe,
-; and !(println! ...) to inspect computed values.
-
-
+; End-to-end MeTTa pipeline test for Qwestor-PeTTa.
+; Run via PeTTa: sh $PETTA_DIR/run.sh main/test/test_pipeline.metta
+;
+; Tests the full pipeline:
+;   Space setup → Context → Appraisal → Goal Weighting → Action Selection
+;
+; Uses hardcoded context signals (bypasses the LLM API).
+; Each section uses !(test ...) for hard assertions and
+; !(println! ...) to surface computed values for inspection.
+; ─────────────────────────────────────────────
 
 ; ── imports ──────────────────────────────────────────────────
 !(import! &self ../../utils/general-helper)
@@ -16,29 +20,35 @@
 
 
 ; ═══════════════════════════════════════════════════════════════
-; TEST 1 — Utility helpers (_clamp01, _clamp11, replaceByIndex)
+; TEST 1 — Utility helpers (_clamp01, _clamp11, replaceByIndex, find_by_key)
+;
+; Validates the core functional primitives used throughout the pipeline.
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 1: Utility Helpers ===")
 
-; --- _clamp01 ---
-!(test (_clamp01 0.5)   0.5)       ; in range -> unchanged
-!(test (_clamp01 -0.3)  0)         ; below   -> floor at 0
-!(test (_clamp01 1.5)   1)         ; above   -> cap at 1
-!(test (_clamp01 0.01)  0.01)      ; near-zero in range
-!(test (_clamp01 0.99)  0.99)      ; near-one in range
+; --- _clamp01 — clamp to [0, 1] ---
+; Example: !(_clamp01 1.5)  ; => 1
+!(test (_clamp01 0.5)   0.5)
+!(test (_clamp01 -0.3)  0)
+!(test (_clamp01 1.5)   1)
+!(test (_clamp01 0.01)  0.01)
+!(test (_clamp01 0.99)  0.99)
 
-; --- _clamp11 ---
-!(test (_clamp11 0.5)   0.5)       ; in range -> unchanged
-!(test (_clamp11 -0.5)  -0.5)      ; in range -> unchanged
-!(test (_clamp11 -1.5)  -1)        ; below   -> floor at -1
-!(test (_clamp11 1.5)   1)         ; above   -> cap at 1
+; --- _clamp11 — clamp to [-1, 1] ---
+; Example: !(_clamp11 -1.5)  ; => -1
+!(test (_clamp11 0.5)   0.5)
+!(test (_clamp11 -0.5)  -0.5)
+!(test (_clamp11 -1.5)  -1)
+!(test (_clamp11 1.5)   1)
 
-; --- replaceByIndex ---
-!(test (replaceByIndex (a b c) 0 x)   (x b c))   ; first element
-!(test (replaceByIndex (a b c) 1 x)   (a x c))   ; middle element
-!(test (replaceByIndex (a b c) 2 x)   (a b x))   ; last element
+; --- replaceByIndex — replace element at position in list ---
+; Example: !(replaceByIndex (a b c) 1 x)  ; => (a x c)
+!(test (replaceByIndex (a b c) 0 x)   (x b c))
+!(test (replaceByIndex (a b c) 1 x)   (a x c))
+!(test (replaceByIndex (a b c) 2 x)   (a b x))
 
-; --- find_by_key ---
+; --- find_by_key — association list lookup ---
+; Example: !(find_by_key color ((color red) (size 10)))  ; => red
 !(test (find_by_key color ((color red) (size 10)))    red)
 !(test (find_by_key size  ((color red) (size 10)))    10)
 
@@ -47,6 +57,9 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 2 — Space setup: create space, add alpha + initial state
+;
+; Verifies that addAlpha, addState, and getState work correctly
+; with the PeTTa-backed space.
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 2: Space Setup ===")
 
@@ -54,8 +67,8 @@
 !(addAlpha &space (alpha))
 !(addState &space (state (turn 0) (default-goals) (default-mods) (default-anti-goals) (alpha)))
 
-; Verify state is retrievable via getState (inspected, not compared
-; against the full symbolic literal to avoid nondeterminism issues)
+; State is retrievable (inspected, not compared against literal to
+; avoid nondeterminism if symbol evaluation order varies)
 !(let $s (getState &space)
     (println! ("  State retrieved OK:" $s))
 )
@@ -65,6 +78,9 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 3 — Alpha hyper-parameter retrieval
+;
+; All 20 alpha parameters from (alpha) should be accessible via getAlpha.
+; Example: !(getAlpha &space urgency_alpha)  ; => 0.60
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 3: Alpha Retrieval ===")
 
@@ -93,7 +109,10 @@
 
 
 ; ═══════════════════════════════════════════════════════════════
-; TEST 4 — Default modulator retrieval (individual fields)
+; TEST 4 — Default modulator retrieval (13 modulator fields)
+;
+; Each modulator should match its default value from (default-mods).
+; Example: !(getMod &space m_urgency)  ; => 0.20
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 4: Default Modulator Retrieval ===")
 
@@ -111,15 +130,17 @@
 !(test (getMod &space m_creativity)        0.45)
 !(test (getMod &space m_valence)           0.00)
 
-; Full modulator vector comparison (safe: only one getMods definition)
 !(test (getMods &space) (default-mods))
 
 !(println! "TEST 4 passed - Default modulator retrieval")
 
 
 ; ═══════════════════════════════════════════════════════════════
-; TEST 5 — Default goal retrieval (individual fields only) because there is 2 (getGoals)functions inside
-;decision L49 and appraisal L15 
+; TEST 5 — Default goal retrieval (14 goal fields)
+;
+; Note: two definitions of getGoals exist (appraisal L15 and decision L49).
+; Individual field access via getGoal is safe and unambiguous.
+; Example: !(getGoal &space efficiency)  ; => 0.60
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 5: Default Goal Retrieval ===")
 
@@ -143,6 +164,9 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 6 — Anti-goal retrieval
+;
+; The anti-goal vector should match the default.
+; Example: !(getAntiGoals &space)  ; => (default-anti-goals)
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 6: Anti-Goal Retrieval ===")
 
@@ -153,6 +177,9 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 7 — Context storage and retrieval (14 signals)
+;
+; add-context stores (key value) pairs; getContext retrieves them.
+; Example: !(getContext &space complexity)  ; => 0.70
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 7: Context Storage and Retrieval ===")
 
@@ -192,7 +219,11 @@
 
 
 ; ═══════════════════════════════════════════════════════════════
-; TEST 8 — Goal update (single field via updateGoal)
+; TEST 8 — Single goal update via updateGoal
+;
+; updateGoal replaces one goal's value while keeping others intact.
+; Example: !(updateGoal &space knowledge 0.80)
+;          !(getGoal &space knowledge)  ; => 0.80
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 8: Goal Update ===")
 
@@ -211,7 +242,11 @@
 
 
 ; ═══════════════════════════════════════════════════════════════
-; TEST 9 — Modulator batch update (update-mods)
+; TEST 9 — Modulator batch update via update-mods
+;
+; update-mods replaces the full modulator vector atomically.
+; Example: !(update-mods &space ((m_urgency 0.10) ...))
+;          !(getMod &space m_urgency)  ; => 0.10
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 9: Modulator Batch Update ===")
 
@@ -239,7 +274,7 @@
 !(test (getMod &space m_approach)          0.50)
 !(test (getMod &space m_valence)          -0.10)
 
-; Restore defaults for next tests
+; Restore defaults for subsequent tests
 !(update-mods &space (
    (m_urgency           0.20)
    (m_resolution        0.40)
@@ -262,22 +297,22 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 10 — State removal and re-addition
+;
+; remove-state wipes the (state ...) atom; addState restores it.
+; Example:
+;   !(remove-state &space)
+;   !(getState &space)  ; => ()
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 10: State Remove and Re-add ===")
 
 !(remove-state &space)
 
-; After removal: state match returns empty
-!(test (
-    let* (
-        ($state (getState &space))
-    ) $state) ())
+!(test (let* (($state (getState &space))) $state) ())
 
-; Add state back
 !(addState &space (state (turn 0) (default-goals) (default-mods) (default-anti-goals) (alpha)))
 
 ; Verify it came back via field checks
-!(test (getMod &space m_urgency)   0.20)
+!(test (getMod  &space m_urgency)  0.20)
 !(test (getGoal &space accuracy)   0.70)
 
 !(println! "TEST 10 passed - State remove and re-add")
@@ -285,12 +320,15 @@
 
 ; ═══════════════════════════════════════════════════════════════
 ; TEST 11 — Appraisal computation (appraisalModulator)
-;   Core EMA test: given context signals + default state,
-;   run the full appraisal and verify modulators shifted.
-;   Expected EMA results (turn=0, cold-start active):
-;     m_urgency:    (1-0.60)*0.20 + 0.60*0.0  = 0.08
-;     m_resolution: (1-0.45)*0.40 + 0.45*0.70 = 0.535
-;     m_threshold:  (1-0.40)*0.30 + 0.40*0.80 = 0.50
+;
+; Runs the full EMA appraisal with the context set in TEST 7.
+; Expected values calculated analytically at turn=0,
+; with cold-start active (coldWeight derived from cold_start_horizon=2.0).
+;
+; EMA formula: new = (1 - α) × old + α × target
+; Example (m_urgency, urgent=0):
+;   target_u = 0.0
+;   new = (1-0.60)×0.20 + 0.60×0.0 = 0.08
 ; ═══════════════════════════════════════════════════════════════
 !(println! "=== TEST 11: Appraisal Computation ===")
 
@@ -298,24 +336,22 @@
     (println! ("  Appraisal returned:" $r))
 )
 
-; Hard assertions
-; All values confirmed analytically and from a reference run (turn=0, coldWeight=0.70)
-!(test (getMod &space m_urgency)          0.08000000000000002)   ; (1-0.60)×0.20 + 0.60×0.0
-!(test (getMod &space m_resolution)       0.535)                 ; (1-0.45)×0.40 + 0.45×0.70
-!(test (getMod &space m_user_expertise)   0.545)                 ; (1-0.45)×0.50 + 0.45×0.60
-!(test (getMod &space m_threshold)        0.5)                   ; (1-0.40)×0.30 + 0.40×0.80
-!(test (getMod &space m_topic_familiarity) 0.46499999999999997)  ; (1-0.35)×0.50 + 0.35×0.40
-!(test (getMod &space m_failure_wariness) 0.08000000000000002)   ; (1-0.20)×0.10 + 0.20×0.00
-!(test (getMod &space m_securing)         0.262)                 ; target=0.46, (1-0.45)×0.10 + 0.45×0.46
-!(test (getMod &space m_approach)         0.492)                 ; target=0.63
-!(test (getMod &space m_arousal)          0.4851)                ; target=~0.6128
-!(test (getMod &space m_risk_aversion)    0.39100000000000007)   ; target=0.38
-!(test (getMod &space m_error_tolerance)  0.538)                 ; target=0.67
-!(test (getMod &space m_creativity)       0.554)                 ; target=0.71
-!(test (getMod &space m_valence)          0.0)                   ; target=0.00
+; Hard assertions — all values confirmed analytically
+!(test (getMod &space m_urgency)           0.08000000000000002)
+!(test (getMod &space m_resolution)        0.535)
+!(test (getMod &space m_user_expertise)    0.545)
+!(test (getMod &space m_threshold)         0.5)
+!(test (getMod &space m_topic_familiarity) 0.46499999999999997)
+!(test (getMod &space m_failure_wariness)  0.08000000000000002)
+!(test (getMod &space m_securing)          0.262)
+!(test (getMod &space m_approach)          0.492)
+!(test (getMod &space m_arousal)           0.4851)
+!(test (getMod &space m_risk_aversion)     0.39100000000000007)
+!(test (getMod &space m_error_tolerance)   0.538)
+!(test (getMod &space m_creativity)        0.554)
+!(test (getMod &space m_valence)           0.0)
 
-!(println! "TEST 11 passed - Appraisal computation ran successfully")
+!(println! "TEST 11 passed - Appraisal computation")
 
-
-; TEST 12 — Goal weighting (goalWeight) will be completed after fixing "getGoals".
-
+; TEST 12 — Goal weighting (goalWeight) will be completed after
+; resolving the duplicate getGoals definition across appraisal + decision.
