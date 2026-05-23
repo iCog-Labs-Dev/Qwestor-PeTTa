@@ -3,100 +3,151 @@
 # run-tests.sh — MeTTa/PeTTa test runner for Qwestor-PeTTa
 # ─────────────────────────────────────────────────────────────────────────────
 
-set -euo pipefail
+# ─────────────────────────────────────────────
+# run-tests.sh  —  PeTTa test runner
+#
+# Usage:
+#   ./run-tests.sh                  run all test files
+#   ./run-tests.sh --file <path>    run a single test file
+#   ./run-tests.sh --verbose        show full PeTTa compiler output
+# ─────────────────────────────────────────────
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-# PETTA_DIR can be overridden at call time:  PETTA_DIR=/my/petta bash run-tests.sh
-PETTA_DIR="${PETTA_DIR:-$HOME/PeTTa}"
-PETTA_RUN="$PETTA_DIR/run.sh"
+echo "🚀 Starting PeTTa-Qwestor Transpiled Tests..."
 
-if [ ! -f "$PETTA_RUN" ]; then
-  echo "❌ PeTTa runner not found at: $PETTA_RUN"
-  echo "   Set PETTA_DIR to the correct path and retry."
-  exit 1
+# ─────────────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────────────
+PETTA_ROOT="${PETTA_ROOT:-/c/Users/tby/PeTTa}"
+RUN_SH="$PETTA_ROOT/run.sh"
+
+if [ ! -f "$RUN_SH" ]; then
+    echo "❌ PeTTa runtime not found at: $RUN_SH"
+    echo "   export PETTA_ROOT=/path/to/PeTTa"
+    exit 1
 fi
 
-# ── Test discovery ────────────────────────────────────────────────────────────
-# Matches the two conventions used in this repo:
-#   • files inside any directory named "test/"  (*/test/*.metta)
-#   • files whose name ends with "-test.metta"  (*-test.metta)
-mapfile -t TESTS < <(find . \( -path "*/test/*.metta" -o -name "*-test.metta" \) | sort)
+echo "📦 Using PeTTa runtime: $RUN_SH"
 
-if [ ${#TESTS[@]} -eq 0 ]; then
-  echo "⚠️  No test files found"
-  exit 0
-fi
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "📁 Project root: $PROJECT_ROOT"
 
-# ── Counters (must live in this shell, not a subshell) ────────────────────────
-TOTAL=0
-PASSED=0
-FAILED=0
-FAILED_FILES=()
+# ─────────────────────────────────────────────
+# FLAGS
+# ─────────────────────────────────────────────
+VERBOSE=false
+SINGLE_FILE=""
 
-echo "🚀 Running ${#TESTS[@]} MeTTa test file(s)..."
-echo "================================================"
-
-# ── Main loop ─────────────────────────────────────────────────────────────────
-for file in "${TESTS[@]}"; do
-  TOTAL=$((TOTAL + 1))
-  printf "▶  %s\n" "$file"
-
-  # Capture all output (stdout + stderr merged).
-  # "|| true" prevents set -e from aborting on non-zero exit; PeTTa exits 0
-  # even on failures, but future PeTTa versions might not.
-  RAW=$(bash "$PETTA_RUN" "$file" 2>&1) || true
-
-  # ── Signal extraction ──────────────────────────────────────────────────────
-  # The !(test expected actual) macro emits exactly one of:
-  #   "   is <val>, should <val>. ✅ "
-  #   "   is <val>, should <val>. ❌ "
-  # Nothing else in PeTTa output contains these emoji, so this grep is safe.
-  TEST_LINES=$(printf '%s\n' "$RAW" | grep -E '^\s*is .*, should .*\.(✅|❌)\s*$' || true)
-
-  # ── Section markers ────────────────────────────────────────────────────────
-  # Our test files use  !(println! "=== TEST N: ... ===")
-  # PeTTa echoes the string back as:  "=== TEST N: ... ==="
-  # Showing these makes it obvious which group a failure belongs to.
-  MARKER_LINES=$(printf '%s\n' "$RAW" | grep -E '^"(===|TEST )' || true)
-
-  if [ -n "$MARKER_LINES" ]; then
-    printf '%s\n' "$MARKER_LINES" | sed 's/^/   /'
-  fi
-
-  # ── Failure detection ──────────────────────────────────────────────────────
-  # Print every failed assertion (❌ lines) so the developer sees exactly
-  # what was wrong without having to rerun with verbose output.
-  FAIL_LINES=$(printf '%s\n' "$TEST_LINES" | grep '❌' || true)
-  FAIL_COUNT=$(printf '%s\n' "$FAIL_LINES" | grep -c '❌' || true)
-
-  if [ -n "$FAIL_LINES" ]; then
-    printf '%s\n' "$FAIL_LINES" | sed 's/^/   /'
-  fi
-
-  # ── Result summary for this file ──────────────────────────────────────────
-  if [ "$FAIL_COUNT" -gt 0 ]; then
-    echo "   ❌ FAILED ($FAIL_COUNT assertion(s) failed)"
-    FAILED=$((FAILED + 1))
-    FAILED_FILES+=("$file")
-  else
-    PASS_COUNT=$(printf '%s\n' "$TEST_LINES" | grep -c '✅' || true)
-    echo "   ✅ PASSED ($PASS_COUNT assertions)"
-    PASSED=$((PASSED + 1))
-  fi
-
-  echo "------------------------------------------------"
+for arg in "$@"; do
+    case "$arg" in
+        --verbose) VERBOSE=true ;;
+        --file)    shift; SINGLE_FILE="$1" ;;
+    esac
 done
 
-# ── Final summary ─────────────────────────────────────────────────────────────
-echo ""
-echo "Results: $PASSED/$TOTAL passed"
+# Filter out PeTTa compiler noise unless --verbose.
+# Keeps: test result lines, println! output, errors.
+filter_output() {
+    if $VERBOSE; then
+        cat
+    else
+        sed 's/\x1b\[[0-9;]*m//g' | \
+        grep -E '(✅ Passed:|❌ Failed:|is .*, should .*\. ❌|^ERROR:)'
+    fi
+}
 
-if [ $FAILED -gt 0 ]; then
-  echo "❌ $FAILED file(s) with failures:"
-  for f in "${FAILED_FILES[@]}"; do
-    echo "   • $f"
-  done
-  exit 1
+# ─────────────────────────────────────────────
+# Run one test file from its own directory
+# ─────────────────────────────────────────────
+run_test() {
+    local abs_file="$1"
+    local file_dir file_name TEMP
+
+    file_dir="$(dirname "$abs_file")"
+    file_name="$(basename "$abs_file")"
+    TEMP=$(mktemp "$file_dir/petta_tmp_XXXXXX.metta")
+
+    cat "$abs_file" > "$TEMP"
+
+    (cd "$file_dir" && "$RUN_SH" "$(basename "$TEMP")" 2>&1) | filter_output
+    local EXIT="${PIPESTATUS[0]}"
+
+    rm -f "$TEMP"
+    return $EXIT
+}
+
+# ─────────────────────────────────────────────
+# --file mode
+# ─────────────────────────────────────────────
+if [[ -n "$SINGLE_FILE" ]]; then
+    ABS_FILE="$(cd "$(dirname "$SINGLE_FILE")" && pwd)/$(basename "$SINGLE_FILE")"
+    if [[ ! -f "$ABS_FILE" ]]; then
+        echo "❌ File not found: $SINGLE_FILE"
+        exit 1
+    fi
+    echo "▶ Running: $SINGLE_FILE"
+    run_test "$ABS_FILE"
+    EXIT=$?
+    [[ $EXIT -eq 0 ]] && echo "✅ Passed" || echo "❌ Failed (exit $EXIT)"
+    exit $EXIT
+fi
+
+# ─────────────────────────────────────────────
+# Collect test files
+# ─────────────────────────────────────────────
+mapfile -t ALL_FILES < <(find "$PROJECT_ROOT" -path "*/test/*.metta" | sort -u)
+
+TEST_FILES=()
+for f in "${ALL_FILES[@]}"; do
+        TEST_FILES+=("$f")
+done
+
+if [ ${#TEST_FILES[@]} -eq 0 ]; then
+    echo "⚠️  No test files found."
+    exit 0
+fi
+
+echo "Found ${#TEST_FILES[@]} test file(s)."
+
+FAILED=0
+FAILED_FILES=()
+COUNT=0
+
+# ─────────────────────────────────────────────
+# Run all tests
+# ─────────────────────────────────────────────
+for file in "${TEST_FILES[@]}"; do
+    DISPLAY="${file#$PROJECT_ROOT/}"
+    echo "================================================"
+    echo "▶ $DISPLAY"
+    echo "------------------------------------------------"
+
+    run_test "$file"
+    EXIT=$?
+
+    if [[ $EXIT -eq 0 ]]; then
+        echo "✅ Passed: $DISPLAY"
+    else
+        echo "❌ Failed: $DISPLAY (exit $EXIT)"
+        FAILED=$((FAILED + 1))
+        FAILED_FILES+=("$DISPLAY")
+    fi
+
+    COUNT=$((COUNT + 1))
+done
+
+# ─────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────
+echo "================================================"
+echo "Ran $COUNT file(s). Passed: $((COUNT - FAILED)). Failed: $FAILED."
+
+if [ $FAILED -ne 0 ]; then
+    echo ""
+    echo "Failed files:"
+    for f in "${FAILED_FILES[@]}"; do
+        echo "  ✗ $f"
+    done
+    exit 1
 fi
 
 echo "✨ All tests passed!"
