@@ -1,3 +1,4 @@
+!(import! &self ../../utils/constants)
 
 ; ─────────────────────────────────────────────
 ; Helper: read one value from a goal-vector tuple
@@ -607,20 +608,18 @@
         )
     )
 )
-(= (get_score $score $key)
-   (case $key
-      (
-          (act_respond (car-atom (cdr-atom (index-atom $score 0))))
-          (act_search  (car-atom (cdr-atom (index-atom $score 1))))
-          (act_verify  (car-atom (cdr-atom (index-atom $score 2))))
-          (act_clarify  (car-atom (cdr-atom (index-atom $score 3))))
-          (act_decompose  (car-atom (cdr-atom (index-atom $score 4))))
-          (act_think  (car-atom (cdr-atom (index-atom $score 5))))
-          (act_synthesize  (car-atom (cdr-atom (index-atom $score 6))))
-
-      )
-   )
-)
+(= (get_score $scores $key)
+   (if (== $scores ())
+       -100000000.0
+       (let* (
+           ($head (car-atom $scores))
+           ($tail (cdr-atom $scores))
+           ($k    (car-atom $head))
+           ($v    (car-atom (cdr-atom $head)))
+       )
+       (if (== $k $key)
+           $v
+           (get_score $tail $key)))))
 
 (= (update-score (($k1 $v1) ($k2 $v2)) $key $new-val)
     (if (== $k1 $key)
@@ -722,46 +721,16 @@
    )
 )
 
-(= (sort-scores (($k1 $v1) ($k2 $v2)))
-    (if (>= $v1 $v2)
-        (($k1 $v1) ($k2 $v2))
-        (($k2 $v2) ($k1 $v1))
-    )
-)
-(= (sort_scores $scores)
-
+(= (sort-scores $scores)
    (let*
       (
-         ($respond    (get_score $scores act_respond))
-         ($_ (println! ("respond : " $respond)))
-
-         ($search     (get_score $scores act_search))
-         ($_ (println! ("search : " $search)))
-
-         ($verify     (get_score $scores act_verify))
-         ($_ (println! ("verify : " $verify)))
-
-         ($clarify    (get_score $scores act_clarify))
-         ($_ (println! ("clarify : " $clarify)))
-
-         ($decompose  (get_score $scores act_decompose))
-         ($_ (println! ("decompose : " $decompose)))
-
-         ($think      (get_score $scores act_think))
-         ($_ (println! ("think : " $think)))
-
-         ($synthesize (get_score $scores act_synthesize))
-         
-         ($_ (println! ("synthesize : " $synthesize)))
-
-         ($list (($respond act_respond) ($search act_search) ($verify act_verify) ($clarify act_clarify) ($decompose act_decompose) ($think act_think) ($synthesize act_synthesize)))
-
-         ($_ (println! ("list : " $list)))
-
-         ($list_sorted (sort $list))
-         ($_ (println! ("list_sorted : " $list_sorted)))
+         ($s  (get_score $scores act_search))
+         ($t  (get_score $scores act_think))
       )
-      $list_sorted
+      (if (>= $s $t)
+         ((act_search $s) (act_think $t))
+         ((act_think $t) (act_search $s))
+      )
    )
 )
 
@@ -856,42 +825,30 @@
         )
 
         (if $is_tie
-
-            ; ── tie-breaking using intent ──────────────────
             (let*
                 (
-                    ($preferred
-                        (get-preferred $intent_type $low_conf $threshold))
-                     ($_ (println! ("preferred: "$preferred)))
-
-                    ($new_score
-                        (+ (+ (max $search_score $think_score)
-                              $intent_margin)
-                           0.0001))
+                    ($preferred      (get-preferred $intent_type $low_conf $threshold))
+                    ($_ (println! ("preferred: "$preferred)))
+                    ($new_score      (+ (+ (max $search_score $think_score) $intent_margin) 0.0001))
                     ($_ (println! ("new_score: "$new_score)))
-
-                    ($updated_scores
-                        (update_score $scores $preferred $new_score))
+                    ($updated_scores (update_score $scores $preferred $new_score))
                     ($_ (println! ("updated scores: "$updated_scores)))
-
-                    ($best_act  (best_action $updated_scores))
- 
-                 )
-
-                (   
-                    (best_action $updated_scores)
-                    (sort_scores $updated_scores)
- 
+                    ($best    (best_action $updated_scores))
+                    ($sorted  (sort-scores $updated_scores))
                 )
+                ($best $sorted)
             )
-
-            (
-               (best_action $scores)
-               (score_action $scores)      
+            (let*
+                (
+                    ($best   (best_action $scores))
+                    ($sorted (sort-scores $scores))
+                )
+                ($best $sorted)
             )
         )
     )
 )
+
 ; ─────────────────────────────────────────────
 ; updateAntiGoals — replace the anti-goal block
 ; ─────────────────────────────────────────────
@@ -909,11 +866,10 @@
                     (redundant   $red)
                     (rabbit_hole $rh)
                     (premature   $prem)))
-       
-      
-      ($_ (add-atom $space (state (turn $t) $g $m $new-anti $alpha)))
+       ($_ (add-atom $space (state (turn $t) $g $m $new-anti $alpha)))
+       ($_ (println! (anti-goals updated 🎉)))
      )
-     (println! (anti-goals updated 🎉))
+     "anti-goals updated"
    )
 )
 
@@ -1080,7 +1036,7 @@
        ($amb  (find_by_key ambiguity $appraisal))
        ($ux   (find_by_key user_expertise $appraisal))
        ($thr  (find_by_key threshold $appraisal))
-       ($fw   (getMod $space m_failure_wariness))
+       ($fw   (find_by_key failure_wariness $appraisal))
        ($lc   (- 1.0 $thr))
        ($res  (find_by_key resolution $appraisal))
        ($app  (find_by_key approach $appraisal))
