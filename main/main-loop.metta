@@ -9,6 +9,8 @@
 !(import! &self "score_action.py")
 !(import! &self score-actions)           
 !(import! &self ../operators/routing)
+!(import! &self "run_sessions.py")
+!(import! &self sessions)
 
 
 !(bind! &space (new-space))
@@ -59,6 +61,7 @@
 
        ($_ (post-update $space $best))
        ($_ (println! ("[STEP 8] post-update done")))
+       ($_ (println! ("[Final Result]:" $best $style $appraisal)))
  
       
      )
@@ -66,4 +69,13 @@
     )
 )
 
-!(full-step &space "What is overfitting in one short sentence?")
+;; run single query 
+;;(full-step &space "What is the capital city of France")
+
+;;run multiple queries  
+!(let* (
+    ($sessions (get-sessions))
+    ($results (run-all-sessions &space $sessions))
+  )
+  $results
+)
