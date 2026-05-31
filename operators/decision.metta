@@ -1,4 +1,4 @@
-
+!(import! &self ../../utils/constants)
 ; ─────────────────────────────────────────────
 ; Helper: read one value from a goal-vector tuple
 ; ─────────────────────────────────────────────
@@ -887,7 +887,7 @@
 
             (
                (best_action $scores)
-               (score_action $scores)      
+               (sort_scores $scores)      
             )
         )
     )
@@ -1080,7 +1080,7 @@
        ($amb  (find_by_key ambiguity $appraisal))
        ($ux   (find_by_key user_expertise $appraisal))
        ($thr  (find_by_key threshold $appraisal))
-       ($fw   (getMod $space m_failure_wariness))
+       ($fw (getMod $space m_failure_wariness))
        ($lc   (- 1.0 $thr))
        ($res  (find_by_key resolution $appraisal))
        ($app  (find_by_key approach $appraisal))
