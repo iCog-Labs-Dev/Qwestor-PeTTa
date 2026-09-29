@@ -187,7 +187,7 @@
           ($thr (ctx-val $ctx threshold))
           ($_ (println! ("thr: "$thr)))
 
-          ($low   (- 1.0 $thr))
+          ($low   (ctx-val $ctx low_confidence))
           ($_ (println! ("low: "$low)))
 
           ($fw (ctx-val $ctx failure_wariness))
@@ -219,6 +219,69 @@
                (adjust-action-score $s2 act_verify -0.20)
                $s2)))))
 
+;; GUARD: INTENT AND AMBIGUITY
+;; Match MetaMo's factual-search boost and high-ambiguity clarification bias.
+(= (guard-intent-ambiguity $scores $ctx)
+   (let* (
+      ($intent (ctx-val $ctx intent_type))
+      ($verify (ctx-val $ctx verify_request))
+      ($amb (ctx-val $ctx ambiguity))
+      ($cx (ctx-val $ctx complexity))
+      ($s1
+        (if (and (== $intent factual)
+                 (and (== $verify 0)
+                      (and (<= $amb 0.55) (>= $cx 0.45))))
+            (adjust-action-score $scores act_search 0.20)
+            $scores))
+    )
+    (if (and (>= $amb 0.75) (== $verify 0))
+        (let* (
+           ($s2 (adjust-action-score $s1 act_clarify 0.24))
+           ($s3 (adjust-action-score $s2 act_synthesize -0.35))
+         )
+         $s3)
+        $s1)))
+
+;; GUARD: FINAL THINK/SYNTHESIZE ELIGIBILITY
+;; Block reflective/synthesis actions when their minimum context is absent.
+(= (guard-final-think-synthesize $scores $ctx)
+   (let* (
+      ($cx (ctx-val $ctx complexity))
+      ($amb (ctx-val $ctx ambiguity))
+      ($low (ctx-val $ctx low_confidence))
+      ($approach (ctx-val $ctx approach))
+      ($threshold (ctx-val $ctx threshold))
+      ($failure-wariness (ctx-val $ctx failure_wariness))
+      ($verify (ctx-val $ctx verify_request))
+      ($reflective (ctx-val $ctx reflective_intent))
+      ($think-allowed
+        (or (>= $cx 0.55)
+            (or (>= $amb 0.40)
+                (or (>= $low 0.45)
+                    (and (>= $approach 0.62) (>= $cx 0.50))))))
+      ($s1
+        (if $think-allowed
+            $scores
+            (set-action-score $scores act_think (ACTION_BLOCKED_SCORE))))
+      ($normal-synthesis
+        (and (>= $cx 0.68)
+             (and (<= $amb 0.55)
+                  (and (<= $threshold 0.55)
+                       (and (<= $failure-wariness 0.35)
+                            (== $verify 0))))))
+      ($reflective-synthesis
+        (and (>= $cx 0.72)
+             (and (>= $reflective 0.70)
+                  (and (<= $amb 0.60)
+                       (and (<= $threshold 0.60)
+                            (and (<= $failure-wariness 0.35)
+                                 (== $verify 0)))))))
+      ($synthesis-allowed (or $normal-synthesis $reflective-synthesis))
+    )
+    (if $synthesis-allowed
+        $s1
+        (set-action-score $s1 act_synthesize (ACTION_BLOCKED_SCORE)))))
+
 ;; GUARD: FAST LANE
 ;; Decision: Bypass planning for simple, high-familiarity inputs.
 (= (guard-fast-lane $scores $ctx $space)
@@ -235,7 +298,7 @@
           
           ($thr (ctx-val $ctx threshold))
           ($_ (println! ("thr: "$thr)))
-          ($low   (- 1.0 $thr))
+          ($low   (ctx-val $ctx low_confidence))
           ($_ (println! ("low: "$low)))
           ($verify (ctx-val $ctx verify_request))
           ($_ (println! ("verify: "$verify)))
@@ -315,13 +378,17 @@
 ;; ============================================================
 
 (= (apply-routing-guards $initial_scores $ctx $space)
-   (guard-fast-lane
-     (guard-verify
-       (guard-search-arb
-         (guard-search-synth
-           (guard-decompose $initial_scores $ctx $space)
-           $ctx)
+   (guard-final-think-synthesize
+     (guard-fast-lane
+       (guard-intent-ambiguity
+         (guard-verify
+           (guard-search-arb
+             (guard-search-synth
+               (guard-decompose $initial_scores $ctx $space)
+               $ctx)
+             $ctx)
+           $ctx $space)
          $ctx)
        $ctx $space)
-     $ctx $space)
+     $ctx)
 )

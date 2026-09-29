@@ -338,7 +338,7 @@
 )
 !(test 
     (/ (round-math (* (find_by_key success_moderate (goalWeight &space)) 10000.0)) 10000.0) 
-    1.1907
+    1.1935
 )
 !(test 
     (/ (round-math (* (find_by_key knowledge (goalWeight &space)) 100000.0)) 100000.0) 
@@ -346,15 +346,15 @@
 )
 !(test 
     (/ (round-math (* (find_by_key novelty (goalWeight &space)) 1000000.0)) 1000000.0) 
-    0.444015
+    0.445079
 )
 !(test 
     (/ (round-math (* (find_by_key success_breakthrough (goalWeight &space)) 100000.0)) 100000.0) 
-    0.45232
+    0.45374
 )
 !(test 
     (/ (round-math (* (find_by_key coherence (goalWeight &space)) 100000.0)) 100000.0) 
-    0.64815
+    0.64681
 )
 !(test 
     (/ (round-math (* (find_by_key originality (goalWeight &space)) 100000.0)) 100000.0) 
@@ -362,7 +362,7 @@
 )
 !(test 
     (/ (round-math (* (find_by_key social (goalWeight &space)) 100000.0)) 100000.0) 
-    0.45878
+    0.4569
 )
 !(test 
     (/ (round-math (* (find_by_key help_short (goalWeight &space)) 100000.0)) 100000.0) 
@@ -374,7 +374,7 @@
 )
 !(test 
     (/ (round-math (* (find_by_key over_beneficial (goalWeight &space)) 100000.0)) 100000.0) 
-    0.64788
+    0.64954
 )
 !(test 
     (/ (round-math (* (find_by_key over_safety (goalWeight &space)) 100000.0)) 100000.0) 
@@ -382,7 +382,7 @@
 )
 !(test 
     (/ (round-math (* (find_by_key over_honesty (goalWeight &space)) 10000.0)) 10000.0) 
-    0.6825
+    0.6861
 )
 
 !(println! "TEST 12 passed - Goal weighting verified safely")

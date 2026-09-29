@@ -4,35 +4,124 @@ def _clamp01(x: float) -> float:
     return max(0.0, min(1.0, float(x)))
 
 
-# ACTIONS table  ─ every entry is either a plain float or a
-# callable that takes cx and returns a float.
+# ACTIONS table 
 
 ACTIONS: dict[str, dict] = {
-    "act_respond":    {"efficiency": 0.85, "accuracy": 0.60,
-                       "success_moderate": 0.70, "knowledge": 0.30,
-                       "novelty": 0.10, "success_breakthrough": 0.20},
-    "act_search":     {"efficiency": 0.40, "accuracy": 0.85,
-                       "success_moderate": 0.60, "knowledge": 0.80,
-                       "novelty": 0.55, "success_breakthrough": 0.50},
-    "act_verify":     {"efficiency": 0.30, "accuracy": 0.90,
-                       "success_moderate": 0.65, "knowledge": 0.35,
-                       "novelty": 0.10, "success_breakthrough": 0.15},
-    "act_clarify":    {"efficiency": 0.50, "accuracy": 0.55,
-                       "success_moderate": 0.50, "knowledge": 0.20,
-                       "novelty": 0.10, "success_breakthrough": 0.10},
-    "act_decompose":  {"efficiency": 0.45, "accuracy": 0.65,
-                       "success_moderate": 0.70, "knowledge": 0.50,
-                       "novelty": 0.40, "success_breakthrough": 0.55},
-    "act_think":      {"efficiency": 0.35, "accuracy": 0.60,
-                       "success_moderate": 0.55, "knowledge": 0.55,
-                       "novelty": 0.60, "success_breakthrough": 0.65},
-    "act_synthesize": {"efficiency": 0.40, "accuracy": 0.70,
-                       "success_moderate": 0.65, "knowledge": 0.60,
-                       "novelty": 0.55, "success_breakthrough": 0.60},
+    "act_respond": {
+        "efficiency": 1.00,
+        "accuracy": lambda cx: _clamp01(1.00 - 1.10 * cx),
+        "success_moderate": lambda cx: _clamp01(0.80 - 0.20 * cx),
+        "knowledge": lambda cx: _clamp01(0.28 + 0.18 * cx),
+        "novelty": lambda cx: _clamp01(0.18 + 0.10 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.18 + 0.12 * cx),
+        "coherence": lambda cx: _clamp01(0.72 - 0.10 * cx),
+        "originality": lambda cx: _clamp01(0.16 + 0.10 * cx),
+        "social": lambda cx: _clamp01(0.74 + 0.08 * (1.0 - cx)),
+        "help_short": lambda cx: _clamp01(0.95 - 0.20 * cx),
+        "help_long": lambda cx: _clamp01(0.25 + 0.20 * cx),
+        "over_beneficial": lambda cx: _clamp01(0.45 - 0.15 * cx),
+        "over_safety": lambda cx: _clamp01(0.45 - 0.20 * cx),
+        "over_honesty": 0.60,
+    },
+    "act_clarify": {
+        "efficiency": 0.65,
+        "accuracy": lambda cx: _clamp01(0.55 + 0.25 * cx),
+        "success_moderate": 0.72,
+        "knowledge": lambda cx: _clamp01(0.45 + 0.20 * cx),
+        "novelty": lambda cx: _clamp01(0.28 + 0.12 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.28 + 0.12 * cx),
+        "coherence": 0.82,
+        "originality": lambda cx: _clamp01(0.18 + 0.10 * cx),
+        "social": 0.95,
+        "help_short": lambda cx: _clamp01(0.55 + 0.10 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.40 + 0.20 * cx),
+        "over_beneficial": 0.85,
+        "over_safety": 0.90,
+        "over_honesty": 0.95,
+    },
+    "act_search": {
+        "efficiency": 0.25,
+        "accuracy": lambda cx: _clamp01(0.30 + 0.90 * cx),
+        "success_moderate": lambda cx: _clamp01(0.55 + 0.20 * cx),
+        "knowledge": lambda cx: _clamp01(0.68 + 0.22 * cx),
+        "novelty": lambda cx: _clamp01(0.58 + 0.18 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.45 + 0.18 * cx),
+        "coherence": 0.58,
+        "originality": lambda cx: _clamp01(0.48 + 0.16 * cx),
+        "social": lambda cx: _clamp01(0.42 + 0.12 * (1.0 - cx)),
+        "help_short": lambda cx: _clamp01(0.35 + 0.10 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.55 + 0.35 * cx),
+        "over_beneficial": 0.72,
+        "over_safety": 0.78,
+        "over_honesty": 0.82,
+    },
+    "act_verify": {
+        "efficiency": 0.35,
+        "accuracy": lambda cx: _clamp01(0.75 + 0.20 * cx),
+        "success_moderate": 0.90,
+        "knowledge": lambda cx: _clamp01(0.62 + 0.15 * cx),
+        "novelty": lambda cx: _clamp01(0.25 + 0.08 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.38 + 0.10 * cx),
+        "coherence": 0.86,
+        "originality": lambda cx: _clamp01(0.24 + 0.08 * cx),
+        "social": 0.88,
+        "help_short": lambda cx: _clamp01(0.40 + 0.10 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.50 + 0.20 * cx),
+        "over_beneficial": 0.96,
+        "over_safety": 0.97,
+        "over_honesty": 0.97,
+    },
+    "act_decompose": {
+        "efficiency": 0.45,
+        "accuracy": lambda cx: _clamp01(0.55 + 0.35 * cx),
+        "success_moderate": lambda cx: _clamp01(0.65 + 0.15 * cx),
+        "knowledge": lambda cx: _clamp01(0.72 + 0.20 * cx),
+        "novelty": lambda cx: _clamp01(0.62 + 0.18 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.62 + 0.22 * cx),
+        "coherence": 0.80,
+        "originality": lambda cx: _clamp01(0.66 + 0.18 * cx),
+        "social": 0.72,
+        "help_short": lambda cx: _clamp01(0.30 + 0.05 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.70 + 0.25 * cx),
+        "over_beneficial": 0.70,
+        "over_safety": 0.76,
+        "over_honesty": 0.80,
+    },
+    "act_think": {
+        "efficiency": 0.40,
+        "accuracy": lambda cx: _clamp01(0.60 + 0.25 * cx),
+        "success_moderate": lambda cx: _clamp01(0.45 + 0.20 * cx),
+        "knowledge": lambda cx: _clamp01(0.66 + 0.18 * cx),
+        "novelty": lambda cx: _clamp01(0.70 + 0.18 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.68 + 0.20 * cx),
+        "coherence": 0.74,
+        "originality": lambda cx: _clamp01(0.74 + 0.16 * cx),
+        "social": 0.58,
+        "help_short": lambda cx: _clamp01(0.35 + 0.10 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.60 + 0.25 * cx),
+        "over_beneficial": 0.78,
+        "over_safety": 0.84,
+        "over_honesty": 0.90,
+    },
+    "act_synthesize": {
+        "efficiency": 0.30,
+        "accuracy": lambda cx: _clamp01(0.74 + 0.12 * cx),
+        "success_moderate": 0.82,
+        "knowledge": lambda cx: _clamp01(0.78 + 0.16 * cx),
+        "novelty": lambda cx: _clamp01(0.56 + 0.12 * cx),
+        "success_breakthrough": lambda cx: _clamp01(0.54 + 0.14 * cx),
+        "coherence": 0.84,
+        "originality": lambda cx: _clamp01(0.82 + 0.12 * cx),
+        "social": 0.68,
+        "help_short": lambda cx: _clamp01(0.42 + 0.08 * (1.0 - cx)),
+        "help_long": lambda cx: _clamp01(0.72 + 0.18 * cx),
+        "over_beneficial": 0.90,
+        "over_safety": 0.92,
+        "over_honesty": 0.95,
+    },
 }
 
 # penalty functions, corresponds to penalties.py
-
 
 def _hallucination_penalty(action: str, cx: float, ambiguity: float) -> float:
     base = {
@@ -371,7 +460,7 @@ def compute_scores(appraisal_metta, weights_metta, space_metta) -> str:
 
    
     threshold      = float(ap.get("threshold", 0.30))
-    low_confidence = _clamp01(1.0 - threshold) 
+    low_confidence = _clamp01(float(ap.get("low_confidence", 1.0 - threshold)))
     threshold_signal= float(ap.get("threshold_signal",1.0))
     familiarity_sig = float(ap.get("familiarity_signal", 0.0))
     ambiguity       = float(ap.get("ambiguity",       0.0))
@@ -381,13 +470,13 @@ def compute_scores(appraisal_metta, weights_metta, space_metta) -> str:
     )
 
     failure_wariness = float(
-        sp.get("failure_wariness",
-               ap.get("failure_signal", 0.0))
+        ap.get("failure_wariness",
+               sp.get("failure_wariness", ap.get("failure_signal", 0.0)))
     )
 
     topic_familiarity = float(
-        sp.get("topic_familiarity",
-               ap.get("familiarity_signal", 0.0))
+        ap.get("familiarity",
+               sp.get("topic_familiarity", ap.get("familiarity_signal", 0.0)))
     )
 
     reflective_think_bonus   = float(sp.get("reflective_think_bonus",   0.14))

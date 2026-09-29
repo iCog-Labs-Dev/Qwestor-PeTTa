@@ -126,7 +126,6 @@
 )
 
 
-; ── concat two Cons-lists (no append/flatten builtin assumed) ──
 (= (cons-concat $a $b)
    (case $a
      (
@@ -137,7 +136,17 @@
 )
 
 
-; ── walk all sessions (Cons list of (Session name turns)), flatten records ──
+; reset evaluation-only session state  
+(= (reset-eval-session-state $space)
+   (let* (
+     ($_ (remove-state $space))
+     ($_ (clear-context $space))
+   )
+   (addState $space
+     (state (turn 0) (default-goals) (default-mods) (default-anti-goals) (alpha)))))
+
+
+;  walk all sessions (Cons list of (Session name turns)), flatten records 
 (= (run-all-sessions-graded $space $sessions)
    (case $sessions
      (
@@ -147,6 +156,7 @@
           (
             ($name  (index-atom $s 1))
             ($turns (index-atom $s 2))
+            ($_ (collapse (reset-eval-session-state $space)))
             ($session-records (run-session-turns $space $name $turns 1))
           )
           (cons-concat $session-records (run-all-sessions-graded $space $rest))))

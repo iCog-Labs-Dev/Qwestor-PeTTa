@@ -76,7 +76,7 @@
        ($appraisal (appraisalModulator $space))
        ($_ (println! ("[STEP 2] appraisal:" $appraisal)))
 
-       ($weights (goalWeight $space))
+       ($weights (goalWeight $space $appraisal))
        ($_ (println! ("[STEP 3] weights:" $weights)))
 
        ($scores (score-all-actions $space $appraisal $weights))

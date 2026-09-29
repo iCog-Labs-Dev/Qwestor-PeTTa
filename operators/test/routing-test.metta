@@ -471,7 +471,7 @@
     )
     &space
   )
-  (((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)))
+  (((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45)))
 )
 
 ;; 2. Weak external evidence → synth blocked, decompose boosted
@@ -503,5 +503,5 @@
     )
     &space
   )
-  (((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)))
+  (((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)))
 )
