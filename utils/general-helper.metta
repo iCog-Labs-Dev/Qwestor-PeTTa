@@ -28,11 +28,6 @@
       )
    )
 )
-; remove all states from a space
-(= (remove-state $space)
- (let $state (match $space (state $x $y) (state $x $y)) (remove-atom $space $state))
-)
-
 ; ─────────────────────────────────────────────
 ; replaceByIndex
 ; Replace the element at position $index in expression $expr with $new.

@@ -1,4 +1,3 @@
-!(import! &self ../../utils/constants)
 ; ─────────────────────────────────────────────
 ; Helper: read one value from a goal-vector tuple
 ; ─────────────────────────────────────────────
@@ -69,7 +68,28 @@
 ; goalWeight – compute weighted goal values
 ;             from current context and modulators.
 ; ─────────────────────────────────────────────
+(= (confidence-from-signals $familiarity $ambiguity $complexity)
+   (eval (_clamp01
+     (+ (* 0.55 $familiarity)
+        (+ (* 0.25 (- 1.0 $ambiguity))
+           (* 0.20 (- 1.0 $complexity)))))))
+
 (= (goalWeight $space)
+   (let* (
+      ($complexity (getContext $space complexity))
+      ($ambiguity (getContext $space ambiguity))
+      ($familiarity (getMod $space m_topic_familiarity))
+      ($confidence (confidence-from-signals $familiarity $ambiguity $complexity))
+      ($low-confidence (eval (_clamp01 (- 1.0 $confidence))))
+    )
+    (goalWeight-with-confidence $space $low-confidence)))
+
+(= (goalWeight $space $appraisal)
+   (goalWeight-with-confidence
+     $space
+     (find_by_key low_confidence $appraisal)))
+
+(= (goalWeight-with-confidence $space $low_confidence)
     (let*
       (
         ; ── context signals ──────────────────────────────
@@ -88,8 +108,7 @@
         ($valence          (getMod $space m_valence))
         ($_ (println! ("modulator values" $resolution $threshold $securing $valence)))
 
-        ; ── derived signal ───────────────────────────────
-        ($low_confidence   (- 1.0 $threshold))
+        ; ── derived signal supplied by the MetaMo confidence formula ──
         ($_ (println! ("low conf" $low_confidence)))
         ; ── current goal values ──────────────────────────
         ($efficiency_goal        (getGoal $space efficiency))

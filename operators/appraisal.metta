@@ -277,7 +277,16 @@
         ; ($_ (println! ("After cold weighting: u: " $u " res: " $res " ux: " $ux " threshold: " $threshold " securing:" $securing " approach: " $approach " arousal: " $arousal " risk_aversion: " $risk_aversion " error_tolerance: " $error_tolerance " creativity: " $creativity)))
         ($valence (eval (_clamp11 (* (- 1.0 $coldWeight) (* (+ (getContext $space valence)
             $coldWeight) (getContext $space valence))))))
-        ($_ (println! ("Calculated effective signals: u: " $u " res: " $res " ux: " $ux " threshold: " $threshold " securing: " $securing " approach: " $approach " arousal: " $arousal " risk_aversion: " $risk_aversion " error_tolerance: " $error_tolerance " creativity: " $creativity " valence: " $valence)))
+        ($familiarity (_effective $m_topic_familiarity $fam $coldWeight))
+        ($failure_wariness (_effective $m_failure_wariness $fs $coldWeight))
+        ($confidence
+          (eval (_clamp01
+            (+ (* 0.55 $familiarity)
+               (+ (* 0.25 (- 1.0 $amb))
+                  (* 0.20 (- 1.0 $cx)))))))
+        ($low_confidence (eval (_clamp01 (- 1.0 $confidence))))
+        ($help_short (getGoal $space help_short))
+        ($_ (println! ("Calculated effective signals: u: " $u " res: " $res " ux: " $ux " threshold: " $threshold " familiarity: " $familiarity " failure_wariness: " $failure_wariness " confidence: " $confidence " low_confidence: " $low_confidence " securing: " $securing " approach: " $approach " arousal: " $arousal " risk_aversion: " $risk_aversion " error_tolerance: " $error_tolerance " creativity: " $creativity " valence: " $valence)))
         
         ($_ (println! ("values : threshold: " $threshold " urgent: " $urgent " intentType: " $intentType " needsExternalEvidence: " $needsExternalEvidence " needsTaskPlan: " $needsTaskPlan " needsMultiSourceIntegration: " $needsMultiSourceIntegration " arousal: " $arousal " risk_aversion: " $risk_aversion " error_tolerance: " $error_tolerance " creativity: " $creativity " valence: " $valence)))
 
@@ -308,6 +317,11 @@
                         (threshold_signal $thr)
                         (familiarity_signal $fam)
                         (failure_signal $fs)
+                        (familiarity $familiarity)
+                        (failure_wariness $failure_wariness)
+                        (confidence $confidence)
+                        (low_confidence $low_confidence)
+                        (help_short $help_short)
                         (urgent_flag $urg)
                         (intent_type $intentType)
                         (verify_request $vr)

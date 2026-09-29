@@ -3,17 +3,7 @@
 ; Shared single-turn engine step, extracted out of main-loop.metta
 ; ─────────────────────────────────────────────
 
-!(import! &self "context_parser.py")
-!(import! &self ../utils/general-helper)
-!(import! &self ../utils/utils)
-!(import! &self ../utils/constants)
-!(import! &self state)
-!(import! &self ../operators/homeostasis)
-!(import! &self ../operators/decision)
-!(import! &self ../operators/appraisal)
-!(import! &self "score_action.py")
-!(import! &self score-actions)
-!(import! &self ../operators/routing)
+; dependencies are imported once by the executable entry point.
 
 ; --- Context Clearing Fix ---
 ; collapse catches the failure if the atom doesn't exist, returning an empty list ().
@@ -90,7 +80,7 @@
        ($appraisal (appraisalModulator $space))
        ($_ (println! ("[STEP 2] appraisal:" $appraisal)))
 
-       ($weights (goalWeight $space))
+       ($weights (goalWeight $space $appraisal))
        ($_ (println! ("[STEP 3] weights:" $weights)))
 
        ($scores (score-all-actions $space $appraisal $weights))

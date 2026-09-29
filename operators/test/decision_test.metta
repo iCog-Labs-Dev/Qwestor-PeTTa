@@ -1,3 +1,4 @@
+!(import! &self ../../utils/constants)
 !(import! &self ../../utils/general-helper)
 !(import! &self ../../utils/utils)
 !(import! &self ../appraisal)
@@ -10,6 +11,8 @@
 
 !(addAlpha &space (alpha))
 !(addState &space (state (turn 0) (default-goals) (default-mods) (default-anti-goals) (alpha)))
+!(addAlpha &StyleSpace (alpha))
+!(addState &StyleSpace (state (turn 0) (default-goals) (default-mods) (default-anti-goals) (alpha)))
 !(add-context &space (context))
 
 ; test for selectAction
@@ -53,7 +56,7 @@
   (act_think ((-100000000 act_clarify) (-100000000 act_decompose) (-100000000 act_respond) (-100000000 act_synthesize) (-100000000 act_verify) (0.8 act_search) (0.8501000000000001 act_think))))
 
 ; test for goalWeight calculation 
-!(test (goalWeight &space) ((efficiency 0.44772) (accuracy 0.6256599999999999) (success_moderate 1.02) (knowledge 0.41340000000000005) (novelty 0.3726) (success_breakthrough 0.37839999999999996) (coherence 0.5655) (originality 0.3504) (social 0.43210000000000004) (help_short 0.5142500000000001) (help_long 0.405) (over_beneficial 0.591) (over_safety 0.6174999999999999) (over_honesty 0.7214999999999999)))
+!(test (goalWeight &space) ((efficiency 0.44772) (accuracy 0.6256599999999999) (success_moderate 0.9105) (knowledge 0.41340000000000005) (novelty 0.33062500000000006) (success_breakthrough 0.32219) (coherence 0.618425) (originality 0.3504) (social 0.506195) (help_short 0.5142500000000001) (help_long 0.405) (over_beneficial 0.5253) (over_safety 0.6174999999999999) (over_honesty 0.57915)))
  
  
 

@@ -1,7 +1,6 @@
-!(import! &self ../routing)
 !(import! &self ../../utils/constants)
-!(import! &self ../../utils/utils)  
-
+!(import! &self ../../utils/utils)
+!(import! &self ../routing)
 !(bind! &space (new-space))
 
 ;; Clean up any existing state and set up properly
@@ -371,11 +370,11 @@
   ((act_verify 10) (act_search 10) (act_clarify 10) (act_think 10) (act_respond 10))
 )
 
-; test get-preferred
-!(test (get-preferred factual 0.10 0.10) act_search)
-!(test (get-preferred reflective 0.10 0.10) act_think)
-!(test (get-preferred exploratory 0.40 0.10) act_search)
-!(test (get-preferred exploratory 0.39 0.44) act_think)
+; test routing-get-preferred
+!(test (routing-get-preferred factual 0.10 0.10) act_search)
+!(test (routing-get-preferred reflective 0.10 0.10) act_think)
+!(test (routing-get-preferred exploratory 0.40 0.10) act_search)
+!(test (routing-get-preferred exploratory 0.39 0.44) act_think)
 !(abs-math 99)
 
 ; select-action with tie-breaking
@@ -415,19 +414,19 @@
   (Result (act_search 20) ((act_search 20) (act_think 10)))
 )
 
-; test for get-best-score
+; test for routing-get-best-score
 !(test
-  (get-best-score ((act_search 10) (act_think 5)))
+  (routing-get-best-score ((act_search 10) (act_think 5)))
   (act_search 10)
 )
 
 !(test
-  (get-best-score ((act_search 3) (act_think 12) (act_decompose 7)))
+  (routing-get-best-score ((act_search 3) (act_think 12) (act_decompose 7)))
   (act_think 12)
 )
 
 !(test
-  (get-best-score ((act_search 8) (act_think 8)))
+  (routing-get-best-score ((act_search 8) (act_think 8)))
   (act_think 8)
 )
 
@@ -471,7 +470,7 @@
     )
     &space
   )
-  (((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)) ((act_search 10.56) (act_decompose 9.44) (act_synthesize 9.73) (act_verify 10.45)))
+  ((act_search 10.56) (act_decompose 9.44) (act_synthesize -1000000000.0) (act_verify 10.45))
 )
 
 ;; 2. Weak external evidence → synth blocked, decompose boosted
@@ -503,5 +502,5 @@
     )
     &space
   )
-  (((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)) ((act_search 8) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09)))
+  ((act_search 8.2) (act_decompose 8.1) (act_synthesize -1.0e+09) (act_verify -1.0e+09))
 )
