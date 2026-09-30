@@ -1,4 +1,4 @@
-!(import! &self ../../utils/utils)
+; State utilities are imported once by the executable entry point.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MetaMo Routing Guards for PeTTa-Qwestor
 ;; Refactored for deterministic list processing using decons.
@@ -187,7 +187,7 @@
           ($thr (ctx-val $ctx threshold))
           ($_ (println! ("thr: "$thr)))
 
-          ($low   (- 1.0 $thr))
+          ($low   (ctx-val $ctx low_confidence))
           ($_ (println! ("low: "$low)))
 
           ($fw (ctx-val $ctx failure_wariness))
@@ -219,6 +219,69 @@
                (adjust-action-score $s2 act_verify -0.20)
                $s2)))))
 
+;; GUARD: INTENT AND AMBIGUITY
+;; Match MetaMo's factual-search boost and high-ambiguity clarification bias.
+(= (guard-intent-ambiguity $scores $ctx)
+   (let* (
+      ($intent (ctx-val $ctx intent_type))
+      ($verify (ctx-val $ctx verify_request))
+      ($amb (ctx-val $ctx ambiguity))
+      ($cx (ctx-val $ctx complexity))
+      ($s1
+        (if (and (== $intent factual)
+                 (and (== $verify 0)
+                      (and (<= $amb 0.55) (>= $cx 0.45))))
+            (adjust-action-score $scores act_search 0.20)
+            $scores))
+    )
+    (if (and (>= $amb 0.75) (== $verify 0))
+        (let* (
+           ($s2 (adjust-action-score $s1 act_clarify 0.24))
+           ($s3 (adjust-action-score $s2 act_synthesize -0.35))
+         )
+         $s3)
+        $s1)))
+
+;; GUARD: FINAL THINK/SYNTHESIZE ELIGIBILITY
+;; Block reflective/synthesis actions when their minimum context is absent.
+(= (guard-final-think-synthesize $scores $ctx)
+   (let* (
+      ($cx (ctx-val $ctx complexity))
+      ($amb (ctx-val $ctx ambiguity))
+      ($low (ctx-val $ctx low_confidence))
+      ($approach (ctx-val $ctx approach))
+      ($threshold (ctx-val $ctx threshold))
+      ($failure-wariness (ctx-val $ctx failure_wariness))
+      ($verify (ctx-val $ctx verify_request))
+      ($reflective (ctx-val $ctx reflective_intent))
+      ($think-allowed
+        (or (>= $cx 0.55)
+            (or (>= $amb 0.40)
+                (or (>= $low 0.45)
+                    (and (>= $approach 0.62) (>= $cx 0.50))))))
+      ($s1
+        (if $think-allowed
+            $scores
+            (set-action-score $scores act_think (ACTION_BLOCKED_SCORE))))
+      ($normal-synthesis
+        (and (>= $cx 0.68)
+             (and (<= $amb 0.55)
+                  (and (<= $threshold 0.55)
+                       (and (<= $failure-wariness 0.35)
+                            (== $verify 0))))))
+      ($reflective-synthesis
+        (and (>= $cx 0.72)
+             (and (>= $reflective 0.70)
+                  (and (<= $amb 0.60)
+                       (and (<= $threshold 0.60)
+                            (and (<= $failure-wariness 0.35)
+                                 (== $verify 0)))))))
+      ($synthesis-allowed (or $normal-synthesis $reflective-synthesis))
+    )
+    (if $synthesis-allowed
+        $s1
+        (set-action-score $s1 act_synthesize (ACTION_BLOCKED_SCORE)))))
+
 ;; GUARD: FAST LANE
 ;; Decision: Bypass planning for simple, high-familiarity inputs.
 (= (guard-fast-lane $scores $ctx $space)
@@ -235,7 +298,7 @@
           
           ($thr (ctx-val $ctx threshold))
           ($_ (println! ("thr: "$thr)))
-          ($low   (- 1.0 $thr))
+          ($low   (ctx-val $ctx low_confidence))
           ($_ (println! ("low: "$low)))
           ($verify (ctx-val $ctx verify_request))
           ($_ (println! ("verify: "$verify)))
@@ -251,11 +314,11 @@
           ($help (ctx-val $ctx help_short) ) 
           ($_ (println! ("help: "$help))))
      (if (and (and (<= $cx 0.45) (and (<= $amb 0.35) (<= $th_s 0.20))) (and (and (<= $low 0.30) (>= $fam_s 0.80)) (and (>= $help 0.55) (== $verify 0))))
-         (let* (($b1 (set-action-score $s1 act_clarify (ACTION_BLOCKED_SCORE)))
-                ($_ (println! ("b1: "$b1)))
-                ($b2 (set-action-score $b1 act_search (ACTION_BLOCKED_SCORE)))
-                ($_ (println! ("b1: "$b1))))
-           (adjust-action-score $b2 act_respond 0.40))
+         (let* (($fast_b1 (set-action-score $s1 act_clarify (ACTION_BLOCKED_SCORE)))
+                ($_ (println! ("fast_b1: "$fast_b1)))
+                ($fast_b2 (set-action-score $fast_b1 act_search (ACTION_BLOCKED_SCORE)))
+                ($_ (println! ("fast_b2: "$fast_b2))))
+           (adjust-action-score $fast_b2 act_respond 0.40))
          $s1)))
 
 ;; ============================================================
@@ -264,15 +327,15 @@
 
 ;; Standard symbol-based preferred action logic
 ;; FACTUAL OVERRIDE
-(= (get-preferred factual $low_conf $threshold)
+(= (routing-get-preferred factual $low_conf $threshold)
    act_search)
 
 ;; REFLECTIVE OVERRIDE
-(= (get-preferred reflective $low_conf $threshold)
+(= (routing-get-preferred reflective $low_conf $threshold)
    act_think)
 
 ;; GENERIC FALLBACK (ONLY FOR OTHER INTENTS)
-(= (get-preferred $intent $low_conf $threshold)
+(= (routing-get-preferred $intent $low_conf $threshold)
    (if (and (not (== $intent factual))
             (not (== $intent reflective)))
        (if (or (>= $low_conf 0.40)
@@ -283,11 +346,11 @@
 )  
 
  
-(= (get-best-score (($action $value))) ($action $value))
-(= (get-best-score $scores)
+(= (routing-get-best-score (($action $value))) ($action $value))
+(= (routing-get-best-score $scores)
    (let* ((($head $rest) (decons $scores))
           (($a1 $v1) $head)
-          (($a2 $v2) (get-best-score $rest)))
+          (($a2 $v2) (routing-get-best-score $rest)))
      (if (> $v1 $v2) ($a1 $v1) ($a2 $v2))))
 
 ;; Select action with intent-based tie-breaking
@@ -301,12 +364,12 @@
           ($is_tie (and (> $s_v (ACTION_BLOCKED_SCORE)) (and (> $t_v (ACTION_BLOCKED_SCORE)) (<= (abs-math (- $s_v $t_v)) $margin))))
           )
      (if $is_tie
-         (let* (($pref (get-preferred $intent $low $th))
+         (let* (($pref (routing-get-preferred $intent $low $th))
                 ($max_v (if (> $s_v $t_v) $s_v $t_v))
                 ($new_v (+ $max_v (+ $margin 0.0001)))
                 ($final_scores (set-action-score $scores $pref $new_v)))
-           (Result (get-best-score $final_scores) $final_scores))
-         (Result (get-best-score $scores) $scores))))
+           (Result (routing-get-best-score $final_scores) $final_scores))
+         (Result (routing-get-best-score $scores) $scores))))
 
 
 
@@ -315,13 +378,17 @@
 ;; ============================================================
 
 (= (apply-routing-guards $initial_scores $ctx $space)
-   (guard-fast-lane
-     (guard-verify
-       (guard-search-arb
-         (guard-search-synth
-           (guard-decompose $initial_scores $ctx $space)
-           $ctx)
+   (guard-final-think-synthesize
+     (guard-fast-lane
+       (guard-intent-ambiguity
+         (guard-verify
+           (guard-search-arb
+             (guard-search-synth
+               (guard-decompose $initial_scores $ctx $space)
+               $ctx)
+             $ctx)
+           $ctx $space)
          $ctx)
        $ctx $space)
-     $ctx $space)
+     $ctx)
 )

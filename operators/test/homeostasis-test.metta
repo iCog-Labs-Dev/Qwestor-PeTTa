@@ -2,6 +2,7 @@
 ; operators/test/homeostasis-test.metta
 ; ─────────────────────────────────────────────
 
+!(import! &self ../../utils/constants)
 !(import! &self ../../utils/general-helper)
 !(import! &self ../../utils/utils)
 !(import! &self ../appraisal)
