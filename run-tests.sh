@@ -63,6 +63,11 @@ source ~/.bashrc 2>/dev/null
 
 echo "🚀 Starting PeTTa-Qwestor Transpiled Tests..."
 
+if ! type petta >/dev/null 2>&1; then
+    echo "ERROR: petta is not available. Install PeTTa and expose the petta command or shell function."
+    exit 127
+fi
+
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
@@ -129,16 +134,20 @@ filter_output() {
 # ─────────────────────────────────────────────
 run_test() {
     local abs_file="$1"
-    local file_dir file_name TEMP OUTPUT
+    local file_dir file_name TEMP RAW_OUTPUT OUTPUT PETTA_EXIT
 
     file_dir="$(dirname "$abs_file")"
     file_name="$(basename "$abs_file")"
     TEMP=$(mktemp "$file_dir/petta_tmp_XXXXXX.metta")
+    RAW_OUTPUT=$(mktemp "/tmp/qwestor_petta_output_XXXXXX.log")
 
     cat "$abs_file" > "$TEMP"
 
-    # Capture filtered output to a variable
-    OUTPUT=$( (cd "$file_dir" && petta "$(basename "$TEMP")" 2>&1) | filter_output )
+    # Capture PeTTa separately from output filtering. If these are one shell
+    # pipeline, the filter's status can hide a missing or crashing runtime.
+    (cd "$file_dir" && petta "$(basename "$TEMP")") >"$RAW_OUTPUT" 2>&1
+    PETTA_EXIT=$?
+    OUTPUT=$(filter_output < "$RAW_OUTPUT")
     
     # Print the output so you can see it in the terminal
     if [[ -n "$OUTPUT" ]]; then
@@ -146,6 +155,17 @@ run_test() {
     fi
 
     rm -f "$TEMP"
+
+    if [[ $PETTA_EXIT -ne 0 ]]; then
+        echo "ERROR: PeTTa exited with status $PETTA_EXIT while running $abs_file"
+        if [[ -z "$OUTPUT" ]]; then
+            tail -n 20 "$RAW_OUTPUT"
+        fi
+        rm -f "$RAW_OUTPUT"
+        return "$PETTA_EXIT"
+    fi
+
+    rm -f "$RAW_OUTPUT"
 
     # Explicitly fail if the text contains a mismatch indicator
     if echo "$OUTPUT" | grep -q "❌"; then
