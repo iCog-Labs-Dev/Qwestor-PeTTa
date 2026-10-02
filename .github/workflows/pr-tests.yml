@@ -1,37 +1,111 @@
-name: PR Tests
+name: MeTTa tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PETTA_REPOSITORY: https://github.com/trueagi-io/PeTTa.git
+  PETTA_REF: v1.0.2
 
 jobs:
-  test:
+  petta-tests:
+    name: Run MeTTa tests with PeTTa
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Qwestor-PeTTa
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
+      - name: Install SWI-Prolog
         run: |
-          python -m pip install --upgrade pip
-          pip install hyperon python-dotenv requests
-          # If MeTTa needs to be built from source, uncomment the following:
-          # git clone https://github.com/trueagi-io/hyperon-experimental.git
-          # cd hyperon-experimental && cargo build --release
-          # echo "$(pwd)/target/release" >> $GITHUB_PATH
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo apt-add-repository -y ppa:swi-prolog/stable
+          sudo apt-get update
+          sudo apt-get install -y swi-prolog
+          swipl --version
+          dpkg --compare-versions "$(swipl --version | awk '{print $3}')" ge 9.1.12
 
-      - name: Make test script executable
-        run: chmod +x run-tests.sh
+      - name: Detect SWI-Prolog Python version
+        id: swi-python
+        run: |
+          set -o pipefail
+          version="$(
+            swipl -q -g "use_module(library(janus)), py_call(sys:version, Version), writeln(Version), halt." \
+              | awk '{print $1}' \
+              | cut -d. -f1,2
+          )"
+          test -n "$version"
+          echo "SWI-Prolog embeds Python $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Run MeTTa Tests
+      - name: Install system Python for SWI-Prolog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libpython${{ steps.swi-python.outputs.version }}-stdlib \
+            python${{ steps.swi-python.outputs.version }} \
+            python${{ steps.swi-python.outputs.version }}-dev \
+            python${{ steps.swi-python.outputs.version }}-venv
+
+      - name: Create Python virtual environment
+        run: |
+          "/usr/bin/python${{ steps.swi-python.outputs.version }}" -m venv "$RUNNER_TEMP/qwestor-venv"
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/qwestor-venv" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/qwestor-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Checkout PeTTa
+        run: |
+          git clone --depth 1 --branch "$PETTA_REF" "$PETTA_REPOSITORY" "$RUNNER_TEMP/PeTTa"
+
+      - name: Install Python dependencies
+        run: |
+          "$VIRTUAL_ENV/bin/python" -m pip install --upgrade pip
+          "$VIRTUAL_ENV/bin/python" -m pip install -r requirements.txt
+          "$VIRTUAL_ENV/bin/python" -m pip install janus-swi
+
+          # PeTTa v1.0.2 is executed through run.sh and does not install a
+          # console entry point. Expose the command expected by run-tests.sh.
+          printf '%s\n' \
+            '#!/bin/sh' \
+            'exec sh "$PETTA_PATH/run.sh" "$@"' \
+            > "$VIRTUAL_ENV/bin/petta"
+          chmod +x "$VIRTUAL_ENV/bin/petta"
+          echo "PETTA_PATH=$RUNNER_TEMP/PeTTa" >> "$GITHUB_ENV"
+
+      - name: Check SWI-Prolog Python environment
+        run: |
+          command -v petta
+          swipl -q -g "\
+            use_module(library(janus)), \
+            py_version, \
+            py_call(sys:prefix, Prefix), \
+            format('Python prefix ~w~n', [Prefix]), \
+            py_call(sys:exec_prefix, ExecPrefix), \
+            format('Python exec_prefix ~w~n', [ExecPrefix]), \
+            py_call(sys:path, PythonPath), \
+            format('Python path ~q~n', [PythonPath]), \
+            py_call(math:pi, Pi), \
+            format('math pi ~w~n', [Pi]), \
+            py_call(datetime:'MINYEAR', MinYear), \
+            format('datetime MINYEAR ~w~n', [MinYear]), \
+            py_call(numpy:'__version__', NumpyVersion), \
+            format('NumPy ~w~n', [NumpyVersion]), \
+            halt."
+
+      - name: Run MeTTa test files
         env:
-          # Uncomment and add your API_KEY to GitHub Secrets if tests require it
-          # API_KEY: ${{ secrets.API_KEY }}
-          MODEL_NAME: "google/gemini-2.0-flash-exp:free"
-        run: ./run-tests.sh
+          PETTA_PATH: ${{ runner.temp }}/PeTTa
+          PYTHONPATH: ${{ github.workspace }}/main
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
